@@ -9,6 +9,114 @@
       "links": [],
       "mtime": "1782558120",
       "content_hash": null
+    },
+    {
+      "number": "0002",
+      "title": "RFC-0002: Модель буфера и курсора",
+      "status": "draft",
+      "dependencies": [
+        "0001"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1782560956",
+      "content_hash": null
+    },
+    {
+      "number": "0003",
+      "title": "RFC-0003: Терминальный ввод и обработка клавиш",
+      "status": "draft",
+      "dependencies": [
+        "0001"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1782560956",
+      "content_hash": null
+    },
+    {
+      "number": "0004",
+      "title": "RFC-0004: Фокусный viewport и центрирование",
+      "status": "draft",
+      "dependencies": [
+        "0001",
+        "0002",
+        "0003"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1782560956",
+      "content_hash": null
+    },
+    {
+      "number": "0005",
+      "title": "RFC-0005: Рендерер и строка статуса",
+      "status": "draft",
+      "dependencies": [
+        "0001",
+        "0002",
+        "0004"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1782560956",
+      "content_hash": null
+    },
+    {
+      "number": "0006",
+      "title": "RFC-0006: Файловый ввод-вывод и readonly-режим",
+      "status": "draft",
+      "dependencies": [
+        "0001",
+        "0002"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1782560956",
+      "content_hash": null
+    },
+    {
+      "number": "0007",
+      "title": "RFC-0007: Настройки и конфигурационный файл",
+      "status": "draft",
+      "dependencies": [
+        "0001",
+        "0005",
+        "0006"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1782560956",
+      "content_hash": null
+    },
+    {
+      "number": "0008",
+      "title": "RFC-0008: Экран помощи и политика горячих клавиш",
+      "status": "draft",
+      "dependencies": [
+        "0001",
+        "0003",
+        "0005",
+        "0007"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1782560956",
+      "content_hash": null
+    },
+    {
+      "number": "0009",
+      "title": "RFC-0009: Режим превью полного файла (post-MVP)",
+      "status": "draft",
+      "dependencies": [
+        "0001",
+        "0004",
+        "0005"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1782560956",
+      "content_hash": null
     }
   ]
 }
