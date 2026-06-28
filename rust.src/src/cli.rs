@@ -65,6 +65,9 @@ pub struct Editor {
     pending_quit: bool,
     mode: Mode,
     settings_field: usize,
+    /// Last rendered text height (console rows minus the status line); used as
+    /// the PageUp/PageDown step.
+    viewport_height: usize,
 }
 
 impl Editor {
@@ -93,6 +96,7 @@ impl Editor {
             pending_quit: false,
             mode: Mode::Edit,
             settings_field: 0,
+            viewport_height: 1,
         }
     }
 
@@ -161,6 +165,9 @@ impl Editor {
             Event::Backspace => self.edit(|b| b.backspace()),
             Event::Delete => self.edit(|b| b.delete()),
             Event::Move(dir) => {
+                let page = self.viewport_height.max(1);
+                let ctx_up = self.lines_before.max(1);
+                let ctx_down = self.lines_after.max(1);
                 let b = self.doc.buffer_mut();
                 match dir {
                     Direction::Up => b.move_up(),
@@ -169,6 +176,10 @@ impl Editor {
                     Direction::Right => b.move_right(),
                     Direction::LineStart => b.move_line_start(),
                     Direction::LineEnd => b.move_line_end(),
+                    Direction::PageUp => b.move_up_by(page),
+                    Direction::PageDown => b.move_down_by(page),
+                    Direction::PageContextUp => b.move_up_by(ctx_up),
+                    Direction::PageContextDown => b.move_down_by(ctx_down),
                 }
             }
             Event::Action(Action::Save) => self.save(),
@@ -252,6 +263,8 @@ impl Editor {
             "  ?           Toggle this help".to_string(),
             "  Arrows      Move cursor".to_string(),
             "  Home/End    Start/end of line".to_string(),
+            "  PgUp/PgDn   Scroll by one page".to_string(),
+            "  Ctrl+PgUp/Dn  Scroll by context height".to_string(),
             "  Enter       Insert line break".to_string(),
             "  Backspace   Delete left".to_string(),
             "  Delete      Delete right".to_string(),
@@ -285,11 +298,12 @@ impl Editor {
 
     /// Builds the current frame and draws it.
     fn render<W: Write>(
-        &self,
+        &mut self,
         renderer: &mut Renderer<W>,
         width: u16,
         height: u16,
     ) -> io::Result<()> {
+        self.viewport_height = height.saturating_sub(1) as usize;
         match self.mode {
             Mode::Help => {
                 return renderer.render_overlay(

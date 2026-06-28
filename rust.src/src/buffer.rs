@@ -233,6 +233,19 @@ impl Buffer {
     pub fn move_line_end(&mut self) {
         self.cursor.col = self.line_len(self.cursor.line);
     }
+
+    /// Moves the cursor up by `n` lines, clamping at the first line.
+    pub fn move_up_by(&mut self, n: usize) {
+        self.cursor.line = self.cursor.line.saturating_sub(n);
+        self.clamp_cursor();
+    }
+
+    /// Moves the cursor down by `n` lines, clamping at the last line.
+    pub fn move_down_by(&mut self, n: usize) {
+        let last = self.lines.len() - 1;
+        self.cursor.line = (self.cursor.line + n).min(last);
+        self.clamp_cursor();
+    }
 }
 
 #[cfg(test)]
@@ -388,6 +401,22 @@ mod tests {
         b.set_cursor(1, 0);
         b.move_line_end();
         assert_eq!(b.cursor(), Cursor { line: 1, col: 2 });
+    }
+
+    #[test]
+    fn move_by_n_lines_clamps_at_bounds() {
+        let mut b = Buffer::new("a\nb\nc\nd\ne");
+        b.set_cursor(0, 0);
+        b.move_down_by(3);
+        assert_eq!(b.cursor(), Cursor { line: 3, col: 0 });
+        // Beyond the last line clamps to it.
+        b.move_down_by(10);
+        assert_eq!(b.cursor(), Cursor { line: 4, col: 0 });
+        b.move_up_by(2);
+        assert_eq!(b.cursor(), Cursor { line: 2, col: 0 });
+        // Beyond the first line clamps to it.
+        b.move_up_by(10);
+        assert_eq!(b.cursor(), Cursor { line: 0, col: 0 });
     }
 
     #[test]
