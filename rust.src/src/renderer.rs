@@ -15,20 +15,22 @@ use crossterm::style::{Color, Print, ResetColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{QueueableCommand, queue};
 
-use crate::viewport::{Layout, RowKind};
+use crate::viewport::{RowKind, Screen};
 
 /// All view data required to draw a single frame.
 pub struct Frame<'a> {
-    pub width: u16,
+    /// Full terminal width.
+    pub term_width: u16,
     pub height: u16,
-    pub lines: &'a [String],
-    pub layout: &'a Layout,
+    /// Desired text column width; the column is centered within the terminal.
+    pub text_width: u16,
+    pub screen: &'a Screen,
     pub file_name: &'a str,
     pub modified: bool,
     pub readonly: bool,
-    /// Zero-based cursor line (for the status line and screen cursor).
+    /// Zero-based cursor line (for the status line).
     pub cursor_line: usize,
-    /// Zero-based cursor column (for the status line and screen cursor).
+    /// Zero-based cursor column (for the status line).
     pub cursor_col: usize,
     /// Transient message shown on the status row instead of the normal status.
     pub message: Option<&'a str>,
@@ -137,43 +139,45 @@ impl<W: Write> Renderer<W> {
         self.out.flush()
     }
 
-    /// Prints a single buffer line, truncated to the terminal width.
-    fn print_line(&mut self, line: &str, width: u16) -> io::Result<()> {
-        let text = take_chars(line, width as usize);
-        self.out.queue(Print(text))?;
+    /// Prints `text` truncated to `width` characters at column `margin`.
+    fn print_at(&mut self, margin: u16, row: u16, text: &str, width: u16) -> io::Result<()> {
+        queue!(self.out, MoveTo(margin, row))?;
+        self.out.queue(Print(take_chars(text, width as usize)))?;
         Ok(())
     }
 
     /// Draws one frame and flushes it.
+    ///
+    /// The text column is `text_width` wide (clamped to the terminal) and
+    /// horizontally centered; the status line is aligned to the same column.
     pub fn render(&mut self, frame: &Frame) -> io::Result<()> {
         queue!(self.out, Hide)?;
 
+        let col_w = frame.text_width.min(frame.term_width).max(1);
+        let margin = frame.term_width.saturating_sub(col_w) / 2;
+
         let text_rows = frame.height.saturating_sub(1) as usize;
-        for (i, row) in frame.layout.rows.iter().enumerate().take(text_rows) {
+        for (i, cell) in frame.screen.rows.iter().enumerate().take(text_rows) {
             queue!(self.out, MoveTo(0, i as u16), Clear(ClearType::CurrentLine))?;
-            match row.kind {
+            match cell.kind {
                 RowKind::Active => {
-                    if let Some(li) = row.line {
-                        queue!(self.out, SetForegroundColor(Color::White))?;
-                        self.print_line(&frame.lines[li], frame.width)?;
-                        queue!(self.out, ResetColor)?;
-                    }
+                    queue!(self.out, SetForegroundColor(Color::White))?;
+                    self.print_at(margin, i as u16, &cell.text, col_w)?;
+                    queue!(self.out, ResetColor)?;
                 }
                 RowKind::Context => {
-                    if let Some(li) = row.line {
-                        queue!(self.out, SetForegroundColor(Color::DarkGrey))?;
-                        self.print_line(&frame.lines[li], frame.width)?;
-                        queue!(self.out, ResetColor)?;
-                    }
+                    queue!(self.out, SetForegroundColor(Color::DarkGrey))?;
+                    self.print_at(margin, i as u16, &cell.text, col_w)?;
+                    queue!(self.out, ResetColor)?;
                 }
                 RowKind::Padding => {}
             }
         }
 
         let status = match frame.message {
-            Some(msg) => fit_message(frame.width as usize, msg),
+            Some(msg) => fit_message(col_w as usize, msg),
             None => status_line(
-                frame.width as usize,
+                col_w as usize,
                 frame.file_name,
                 frame.modified,
                 frame.readonly,
@@ -185,15 +189,15 @@ impl<W: Write> Renderer<W> {
             self.out,
             MoveTo(0, frame.height.saturating_sub(1)),
             Clear(ClearType::CurrentLine),
+            MoveTo(margin, frame.height.saturating_sub(1)),
             SetForegroundColor(Color::DarkGrey),
             Print(status),
             ResetColor
         )?;
 
-        let cursor_x = frame
-            .cursor_col
-            .min(frame.width.saturating_sub(1) as usize) as u16;
-        let cursor_y = frame.layout.active_row as u16;
+        let cursor_x = (margin + frame.screen.cursor_col.min(col_w.saturating_sub(1) as usize) as u16)
+            .min(frame.term_width.saturating_sub(1));
+        let cursor_y = frame.screen.cursor_row as u16;
         queue!(self.out, MoveTo(cursor_x, cursor_y), Show)?;
 
         self.out.flush()
@@ -215,7 +219,7 @@ impl<W: Write> Renderer<W> {
         for r in 0..text_rows {
             queue!(self.out, MoveTo(0, r as u16), Clear(ClearType::CurrentLine))?;
             if let Some(line) = content.get(r) {
-                self.print_line(line, width)?;
+                self.print_at(0, r as u16, line, width)?;
             }
         }
         queue!(

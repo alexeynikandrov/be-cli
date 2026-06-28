@@ -35,6 +35,7 @@ impl CursorOnOpen {
 pub struct Config {
     pub lines_before: usize,
     pub lines_after: usize,
+    pub text_width: usize,
     pub cursor_on_open: CursorOnOpen,
 }
 
@@ -43,6 +44,7 @@ impl Default for Config {
         Self {
             lines_before: 3,
             lines_after: 3,
+            text_width: 80,
             cursor_on_open: CursorOnOpen::Start,
         }
     }
@@ -55,9 +57,11 @@ impl Config {
             "# be editor configuration\n\
              lines_before = {}\n\
              lines_after = {}\n\
+             text_width = {}\n\
              cursor_on_open = \"{}\"\n",
             self.lines_before,
             self.lines_after,
+            self.text_width,
             self.cursor_on_open.as_str(),
         )
     }
@@ -105,6 +109,13 @@ pub fn parse(content: &str) -> (Config, Vec<String>) {
                 Err(_) => warnings.push(format!(
                     "invalid lines_after '{value}', using {}",
                     config.lines_after
+                )),
+            },
+            "text_width" => match value.parse::<usize>() {
+                Ok(n) if n >= 1 => config.text_width = n,
+                _ => warnings.push(format!(
+                    "invalid text_width '{value}', using {}",
+                    config.text_width
                 )),
             },
             "cursor_on_open" => match value.to_ascii_lowercase().as_str() {
@@ -198,6 +209,7 @@ mod tests {
         let c = Config::default();
         assert_eq!(c.lines_before, 3);
         assert_eq!(c.lines_after, 3);
+        assert_eq!(c.text_width, 80);
         assert_eq!(c.cursor_on_open, CursorOnOpen::Start);
     }
 
@@ -245,11 +257,23 @@ mod tests {
         let original = Config {
             lines_before: 4,
             lines_after: 1,
+            text_width: 72,
             cursor_on_open: CursorOnOpen::End,
         };
         let (parsed, w) = parse(&original.to_toml());
         assert_eq!(parsed, original);
         assert!(w.is_empty());
+    }
+
+    #[test]
+    fn parse_text_width_valid_and_invalid() {
+        let (c, w) = parse("text_width = 60\n");
+        assert_eq!(c.text_width, 60);
+        assert!(w.is_empty());
+        let (c, w) = parse("text_width = 0\n");
+        assert_eq!(c.text_width, 80); // default kept
+        assert_eq!(w.len(), 1);
+        assert!(w[0].contains("text_width"));
     }
 
     #[test]

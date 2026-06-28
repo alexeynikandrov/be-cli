@@ -59,6 +59,7 @@ pub struct Editor {
     doc: Document,
     lines_before: usize,
     lines_after: usize,
+    text_width: usize,
     cursor_on_open: CursorOnOpen,
     message: Option<String>,
     pending_quit: bool,
@@ -72,6 +73,7 @@ impl Editor {
         mut doc: Document,
         lines_before: usize,
         lines_after: usize,
+        text_width: usize,
         cursor_on_open: CursorOnOpen,
     ) -> Self {
         match cursor_on_open {
@@ -85,6 +87,7 @@ impl Editor {
             doc,
             lines_before,
             lines_after,
+            text_width,
             cursor_on_open,
             message: None,
             pending_quit: false,
@@ -195,7 +198,7 @@ impl Editor {
                 self.settings_field = self.settings_field.saturating_sub(1);
             }
             Event::Move(Direction::Down) => {
-                self.settings_field = (self.settings_field + 1).min(2);
+                self.settings_field = (self.settings_field + 1).min(3);
             }
             Event::Move(Direction::Left) => self.adjust_setting(false),
             Event::Move(Direction::Right) => self.adjust_setting(true),
@@ -218,6 +221,13 @@ impl Editor {
                     self.lines_after + 1
                 } else {
                     self.lines_after.saturating_sub(1)
+                };
+            }
+            2 => {
+                self.text_width = if up {
+                    self.text_width + 1
+                } else {
+                    self.text_width.saturating_sub(1).max(1)
                 };
             }
             _ => {
@@ -259,6 +269,7 @@ impl Editor {
         let fields = [
             format!("lines_before: {}", self.lines_before),
             format!("lines_after: {}", self.lines_after),
+            format!("text_width: {}", self.text_width),
             format!("cursor_on_open: {cursor}"),
         ];
         let mut lines = vec!["be — settings".to_string(), String::new()];
@@ -288,19 +299,21 @@ impl Editor {
 
         let cursor = self.doc.buffer().cursor();
         let content_height = height.saturating_sub(1) as usize;
-        let layout = viewport::layout(
-            self.doc.buffer().line_count(),
+        let screen = viewport::build(
+            self.doc.buffer().lines(),
             cursor.line,
+            cursor.col,
             content_height,
+            self.text_width,
             self.lines_before,
             self.lines_after,
         );
         let file_name = self.doc.file_name();
         let frame = Frame {
-            width,
+            term_width: width,
             height,
-            lines: self.doc.buffer().lines(),
-            layout: &layout,
+            text_width: self.text_width as u16,
+            screen: &screen,
             file_name: &file_name,
             modified: self.doc.buffer().is_modified(),
             readonly: self.doc.is_readonly(),
@@ -364,7 +377,13 @@ fn run() -> io::Result<()> {
         }
     };
 
-    let mut editor = Editor::new(doc, lines_before, lines_after, cfg.cursor_on_open);
+    let mut editor = Editor::new(
+        doc,
+        lines_before,
+        lines_after,
+        cfg.text_width,
+        cfg.cursor_on_open,
+    );
     if !warnings.is_empty() {
         editor.set_message(warnings.join("; "));
     }
@@ -410,7 +429,7 @@ mod tests {
         let path = std::env::temp_dir().join(format!("be_cli_{}_{}", std::process::id(), n));
         fs::write(&path, text).unwrap();
         let doc = Document::open(&path, readonly).unwrap();
-        (Editor::new(doc, 3, 3, CursorOnOpen::Start), path)
+        (Editor::new(doc, 3, 3, 80, CursorOnOpen::Start), path)
     }
 
     #[test]
@@ -485,7 +504,7 @@ mod tests {
         let path = std::env::temp_dir().join(format!("be_cli_end_{}_{}", std::process::id(), n));
         fs::write(&path, "ab\ncde").unwrap();
         let doc = Document::open(&path, false).unwrap();
-        let ed = Editor::new(doc, 3, 3, CursorOnOpen::End);
+        let ed = Editor::new(doc, 3, 3, 80, CursorOnOpen::End);
         let c = ed.doc.buffer().cursor();
         assert_eq!(c.line, 1);
         assert_eq!(c.col, 3);
@@ -541,9 +560,16 @@ mod tests {
         ed.handle(Event::Move(Direction::Right));
         assert_eq!(ed.lines_after, 4);
 
-        // Move to field 2 and toggle cursor_on_open.
+        // Move to field 2 and adjust text_width.
         ed.handle(Event::Move(Direction::Down));
         assert_eq!(ed.settings_field, 2);
+        assert_eq!(ed.text_width, 80);
+        ed.handle(Event::Move(Direction::Right));
+        assert_eq!(ed.text_width, 81);
+
+        // Move to field 3 and toggle cursor_on_open.
+        ed.handle(Event::Move(Direction::Down));
+        assert_eq!(ed.settings_field, 3);
         assert_eq!(ed.cursor_on_open, CursorOnOpen::Start);
         ed.handle(Event::Move(Direction::Right));
         assert_eq!(ed.cursor_on_open, CursorOnOpen::End);

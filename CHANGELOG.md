@@ -10,6 +10,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 ### Added
 
 - `make release` target building an optimized binary.
+- Configurable, horizontally centered text column (`text_width`, default 80)
+  with word wrap for long lines; adjustable from the settings panel and
+  persisted to the config file.
 
 ### Changed
 

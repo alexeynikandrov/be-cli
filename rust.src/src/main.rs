@@ -6,6 +6,8 @@ mod input;
 #[allow(dead_code)]
 mod viewport;
 #[allow(dead_code)]
+mod wrap;
+#[allow(dead_code)]
 mod renderer;
 #[allow(dead_code)]
 mod config;
