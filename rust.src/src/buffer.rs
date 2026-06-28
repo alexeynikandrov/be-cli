@@ -223,6 +223,16 @@ impl Buffer {
             self.clamp_cursor();
         }
     }
+
+    /// Moves the cursor to the start of the current line.
+    pub fn move_line_start(&mut self) {
+        self.cursor.col = 0;
+    }
+
+    /// Moves the cursor to the end of the current line.
+    pub fn move_line_end(&mut self) {
+        self.cursor.col = self.line_len(self.cursor.line);
+    }
 }
 
 #[cfg(test)]
@@ -364,6 +374,20 @@ mod tests {
         assert_eq!(b.cursor(), Cursor { line: 1, col: 2 });
         b.move_up();
         assert_eq!(b.cursor(), Cursor { line: 0, col: 2 });
+    }
+
+    #[test]
+    fn line_start_and_end_moves() {
+        let mut b = Buffer::new("hello\nhi");
+        b.set_cursor(0, 3);
+        b.move_line_start();
+        assert_eq!(b.cursor(), Cursor { line: 0, col: 0 });
+        b.move_line_end();
+        assert_eq!(b.cursor(), Cursor { line: 0, col: 5 });
+        // End on a shorter line lands at that line's length.
+        b.set_cursor(1, 0);
+        b.move_line_end();
+        assert_eq!(b.cursor(), Cursor { line: 1, col: 2 });
     }
 
     #[test]

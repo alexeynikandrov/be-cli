@@ -167,6 +167,8 @@ impl Editor {
                     Direction::Down => b.move_down(),
                     Direction::Left => b.move_left(),
                     Direction::Right => b.move_right(),
+                    Direction::LineStart => b.move_line_start(),
+                    Direction::LineEnd => b.move_line_end(),
                 }
             }
             Event::Action(Action::Save) => self.save(),
@@ -249,6 +251,7 @@ impl Editor {
             "  Ctrl+O      Settings".to_string(),
             "  ?           Toggle this help".to_string(),
             "  Arrows      Move cursor".to_string(),
+            "  Home/End    Start/end of line".to_string(),
             "  Enter       Insert line break".to_string(),
             "  Backspace   Delete left".to_string(),
             "  Delete      Delete right".to_string(),
