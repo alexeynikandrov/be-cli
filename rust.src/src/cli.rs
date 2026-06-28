@@ -71,6 +71,8 @@ pub struct Editor {
     viewport_height: usize,
     autosave: bool,
     autosave_interval: usize,
+    /// Path of the config file to persist settings changes to, if resolvable.
+    config_path: Option<PathBuf>,
 }
 
 impl Editor {
@@ -104,7 +106,13 @@ impl Editor {
             viewport_height: 1,
             autosave,
             autosave_interval,
+            config_path: None,
         }
+    }
+
+    /// Sets the config file path used to persist settings panel changes.
+    pub fn set_config_path(&mut self, path: Option<PathBuf>) {
+        self.config_path = path;
     }
 
     /// Sets a transient status message shown on the next frame.
@@ -242,10 +250,13 @@ impl Editor {
     /// Handles input in the settings panel.
     ///
     /// Up/Down select a field, Left/Right change it, Esc or Ctrl+O closes.
-    /// Changes apply to the current session only.
+    /// On close the current settings are persisted to the config file.
     fn handle_settings(&mut self, event: Event) {
         match event {
-            Event::Escape | Event::Action(Action::OpenSettings) => self.mode = Mode::Edit,
+            Event::Escape | Event::Action(Action::OpenSettings) => {
+                self.mode = Mode::Edit;
+                self.persist_settings();
+            }
             Event::Move(Direction::Up) => {
                 self.settings_field = self.settings_field.saturating_sub(1);
             }
@@ -255,6 +266,25 @@ impl Editor {
             Event::Move(Direction::Left) => self.adjust_setting(false),
             Event::Move(Direction::Right) => self.adjust_setting(true),
             _ => {}
+        }
+    }
+
+    /// Writes the current settings to the config file, reporting the outcome.
+    fn persist_settings(&mut self) {
+        let Some(path) = self.config_path.clone() else {
+            return;
+        };
+        let cfg = config::Config {
+            lines_before: self.lines_before,
+            lines_after: self.lines_after,
+            text_width: self.text_width,
+            cursor_on_open: self.cursor_on_open,
+            autosave: self.autosave,
+            autosave_interval: self.autosave_interval,
+        };
+        match config::save_at(&path, cfg) {
+            Ok(()) => self.message = Some("settings saved".to_string()),
+            Err(e) => self.message = Some(e),
         }
     }
 
@@ -468,6 +498,10 @@ fn run() -> io::Result<()> {
         editor.set_message(warnings.join("; "));
     }
 
+    let xdg = std::env::var("XDG_CONFIG_HOME").ok();
+    let home = std::env::var("HOME").ok();
+    editor.set_config_path(config::resolve_path(xdg.as_deref(), home.as_deref()));
+
     install_panic_hook();
     let _session = TerminalSession::enter()?;
     let mut renderer = Renderer::new(io::stdout());
@@ -627,6 +661,31 @@ mod tests {
         ed.autosave_tick();
         assert!(ed.doc.buffer().is_modified()); // not saved
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn closing_settings_persists_to_config_file() {
+        let (mut ed, path) = editor_with("abc", false);
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let cfg_dir = std::env::temp_dir().join(format!("be_cfg_{}_{}", std::process::id(), n));
+        let cfg_path = cfg_dir.join("be").join("config.toml");
+        ed.set_config_path(Some(cfg_path.clone()));
+
+        ed.handle(Event::Action(Action::OpenSettings));
+        // Select autosave (field 4) and toggle it on.
+        for _ in 0..4 {
+            ed.handle(Event::Move(Direction::Down));
+        }
+        ed.handle(Event::Move(Direction::Right));
+        // Close the panel: settings are written to disk.
+        ed.handle(Event::Action(Action::OpenSettings));
+
+        assert_eq!(ed.message.as_deref(), Some("settings saved"));
+        let (loaded, _) = config::load_or_create_at(&cfg_path);
+        assert!(loaded.autosave);
+
+        let _ = fs::remove_file(path);
+        let _ = fs::remove_dir_all(&cfg_dir);
     }
 
     #[test]

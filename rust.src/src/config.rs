@@ -168,6 +168,22 @@ pub fn resolve_path(xdg_config_home: Option<&str>, home: Option<&str>) -> Option
         .map(|h| Path::new(h).join(".config").join("be").join("config.toml"))
 }
 
+/// Writes `config` to `path`, creating the parent directory if needed.
+///
+/// Returns an error message on failure (the caller surfaces it in the UI).
+pub fn save_at(path: &Path, config: Config) -> Result<(), String> {
+    if let Some(parent) = path.parent()
+        && let Err(e) = fs::create_dir_all(parent)
+    {
+        return Err(format!(
+            "cannot create config dir '{}': {e}",
+            parent.display()
+        ));
+    }
+    fs::write(path, config.to_toml())
+        .map_err(|e| format!("cannot write config '{}': {e}", path.display()))
+}
+
 /// Loads the config from `path`, creating it with defaults if it is missing.
 ///
 /// Returns the config plus warnings (invalid values, or I/O problems that fall
@@ -313,6 +329,25 @@ mod tests {
         assert!(!c.autosave); // default kept
         assert_eq!(c.autosave_interval, 5); // default kept
         assert_eq!(w.len(), 2);
+    }
+
+    #[test]
+    fn save_at_roundtrips_through_load() {
+        let dir = temp_dir();
+        let path = dir.join("be").join("config.toml");
+        let cfg = Config {
+            lines_before: 2,
+            lines_after: 6,
+            text_width: 64,
+            cursor_on_open: CursorOnOpen::End,
+            autosave: true,
+            autosave_interval: 7,
+        };
+        save_at(&path, cfg).unwrap();
+        let (loaded, w) = load_or_create_at(&path);
+        assert_eq!(loaded, cfg);
+        assert!(w.is_empty());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
