@@ -425,6 +425,7 @@ impl Editor {
             file_name: &file_name,
             modified: self.doc.buffer().is_modified(),
             readonly: self.doc.is_readonly(),
+            autosave: self.autosave,
             cursor_line: cursor.line,
             cursor_col: cursor.col,
             message: self.message.as_deref(),

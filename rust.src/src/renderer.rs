@@ -28,6 +28,8 @@ pub struct Frame<'a> {
     pub file_name: &'a str,
     pub modified: bool,
     pub readonly: bool,
+    /// Whether autosave is enabled (shown as a status-line marker).
+    pub autosave: bool,
     /// Zero-based cursor line (for the status line).
     pub cursor_line: usize,
     /// Zero-based cursor column (for the status line).
@@ -43,16 +45,17 @@ fn take_chars(s: &str, max: usize) -> String {
 
 /// Builds the status line, exactly `width` characters wide.
 ///
-/// Layout: `left` (`[name] [state]` plus an optional `[readonly]` marker) is
-/// left-aligned, the position `Ln L, Col C` is right-aligned, and spaces fill
-/// the gap. When the line does not fit, the left part is truncated (with an
-/// ellipsis) so the right-aligned position remains visible. `cursor_line` and
-/// `cursor_col` are zero-based and shown 1-based.
+/// Layout: `left` (`[name] [state]` plus optional `[autosave]` and `[readonly]`
+/// markers) is left-aligned, the position `Ln L, Col C` is right-aligned, and
+/// spaces fill the gap. When the line does not fit, the left part is truncated
+/// (with an ellipsis) so the right-aligned position remains visible.
+/// `cursor_line` and `cursor_col` are zero-based and shown 1-based.
 pub fn status_line(
     width: usize,
     file_name: &str,
     modified: bool,
     readonly: bool,
+    autosave: bool,
     cursor_line: usize,
     cursor_col: usize,
 ) -> String {
@@ -62,6 +65,9 @@ pub fn status_line(
 
     let state = if modified { "modified" } else { "saved" };
     let mut left = format!("[{file_name}] [{state}]");
+    if autosave {
+        left.push_str(" [autosave]");
+    }
     if readonly {
         left.push_str(" [readonly]");
     }
@@ -195,6 +201,7 @@ impl<W: Write> Renderer<W> {
                 frame.file_name,
                 frame.modified,
                 frame.readonly,
+                frame.autosave,
                 frame.cursor_line,
                 frame.cursor_col,
             ),
@@ -257,45 +264,51 @@ mod tests {
 
     #[test]
     fn status_shows_help_hint_when_wide() {
-        let s = status_line(60, "a.txt", false, false, 0, 0);
+        let s = status_line(60, "a.txt", false, false, false, 0, 0);
         assert!(s.contains("Ctrl+H Help"));
         assert!(s.ends_with("Ln 1, Col 1"));
     }
 
     #[test]
     fn status_zero_width_is_empty() {
-        assert_eq!(status_line(0, "a.txt", false, false, 0, 0), "");
+        assert_eq!(status_line(0, "a.txt", false, false, false, 0, 0), "");
     }
 
     #[test]
     fn status_has_exact_width() {
-        let s = status_line(40, "notes.txt", true, false, 11, 7);
+        let s = status_line(40, "notes.txt", true, false, false, 11, 7);
         assert_eq!(s.chars().count(), 40);
     }
 
     #[test]
     fn status_shows_left_and_right_parts() {
-        let s = status_line(40, "notes.txt", true, false, 11, 7);
+        let s = status_line(40, "notes.txt", true, false, false, 11, 7);
         assert!(s.starts_with("[notes.txt] [modified]"));
         assert!(s.ends_with("Ln 12, Col 8"));
     }
 
     #[test]
     fn status_saved_state() {
-        let s = status_line(40, "a.txt", false, false, 0, 0);
+        let s = status_line(40, "a.txt", false, false, false, 0, 0);
         assert!(s.starts_with("[a.txt] [saved]"));
         assert!(s.ends_with("Ln 1, Col 1"));
     }
 
     #[test]
+    fn status_autosave_marker() {
+        let s = status_line(60, "a.txt", false, false, true, 0, 0);
+        assert!(s.contains("[autosave]"));
+    }
+
+    #[test]
     fn status_readonly_marker() {
-        let s = status_line(50, "a.txt", false, true, 0, 0);
+        let s = status_line(50, "a.txt", false, true, false, 0, 0);
         assert!(s.contains("[readonly]"));
     }
 
     #[test]
     fn status_truncates_filename_keeping_position() {
-        let s = status_line(20, "a-very-long-file-name.txt", false, false, 4, 2);
+        let s = status_line(20, "a-very-long-file-name.txt", false, false, false, 4, 2);
         assert_eq!(s.chars().count(), 20);
         assert!(s.ends_with("Ln 5, Col 3"));
         assert!(s.contains('…'));
@@ -304,7 +317,7 @@ mod tests {
     #[test]
     fn status_position_preserved_when_extremely_narrow() {
         let right = "Ln 1, Col 1";
-        let s = status_line(5, "name.txt", false, false, 0, 0);
+        let s = status_line(5, "name.txt", false, false, false, 0, 0);
         assert_eq!(s.chars().count(), 5);
         // Shows the right side of the position status.
         assert!(right.ends_with(&s));
