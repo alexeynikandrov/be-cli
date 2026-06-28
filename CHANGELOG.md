@@ -7,6 +7,14 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added
+
+- `make release` target building an optimized binary.
+
+### Changed
+
+- Advanced RFC-0001..0008 to status `implemented`.
+
 ## [0.1.0] - 2026-06-28
 
 ### Added
