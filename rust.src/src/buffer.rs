@@ -234,6 +234,12 @@ impl Buffer {
         self.cursor.col = self.line_len(self.cursor.line);
     }
 
+    /// Moves the cursor to the very start of the document (Ctrl+Home).
+    pub fn move_file_start(&mut self) {
+        self.cursor.line = 0;
+        self.cursor.col = 0;
+    }
+
     /// Moves the cursor up by `n` lines, clamping at the first line.
     pub fn move_up_by(&mut self, n: usize) {
         self.cursor.line = self.cursor.line.saturating_sub(n);
@@ -401,6 +407,14 @@ mod tests {
         b.set_cursor(1, 0);
         b.move_line_end();
         assert_eq!(b.cursor(), Cursor { line: 1, col: 2 });
+    }
+
+    #[test]
+    fn move_file_start_jumps_to_origin() {
+        let mut b = Buffer::new("a\nbb\nccc");
+        b.set_cursor(2, 3);
+        b.move_file_start();
+        assert_eq!(b.cursor(), Cursor { line: 0, col: 0 });
     }
 
     #[test]

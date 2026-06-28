@@ -17,6 +17,7 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - PageUp and PageDown move the cursor by one console height; Ctrl+PageUp and
   Ctrl+PageDown move it by the configured context height (`lines_before` /
   `lines_after`).
+- Ctrl+Home moves the cursor to the start of the file.
 
 ### Fixed
 
