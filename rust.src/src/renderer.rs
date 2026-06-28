@@ -11,9 +11,7 @@
 use std::io::{self, Write};
 
 use crossterm::cursor::{Hide, MoveTo, Show};
-use crossterm::style::{
-    Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor,
-};
+use crossterm::style::{Color, Print, ResetColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{QueueableCommand, queue};
 
@@ -187,9 +185,9 @@ impl<W: Write> Renderer<W> {
             self.out,
             MoveTo(0, frame.height.saturating_sub(1)),
             Clear(ClearType::CurrentLine),
-            SetAttribute(Attribute::Reverse),
+            SetForegroundColor(Color::DarkGrey),
             Print(status),
-            SetAttribute(Attribute::Reset)
+            ResetColor
         )?;
 
         let cursor_x = frame
@@ -224,9 +222,9 @@ impl<W: Write> Renderer<W> {
             self.out,
             MoveTo(0, height.saturating_sub(1)),
             Clear(ClearType::CurrentLine),
-            SetAttribute(Attribute::Reverse),
+            SetForegroundColor(Color::DarkGrey),
             Print(fit_message(width as usize, footer)),
-            SetAttribute(Attribute::Reset)
+            ResetColor
         )?;
         self.out.flush()
     }
