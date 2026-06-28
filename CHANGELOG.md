@@ -14,6 +14,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   with word wrap for long lines; adjustable from the settings panel and
   persisted to the config file.
 - Home and End keys move the cursor to the start and end of the current line.
+- PageUp and PageDown move the cursor by one console height; Ctrl+PageUp and
+  Ctrl+PageDown move it by the configured context height (`lines_before` /
+  `lines_after`).
 
 ### Fixed
 

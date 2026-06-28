@@ -24,6 +24,14 @@ pub enum Direction {
     LineStart,
     /// End of the current line (End).
     LineEnd,
+    /// Up by one console height (PageUp).
+    PageUp,
+    /// Down by one console height (PageDown).
+    PageDown,
+    /// Up by the configured context height (Ctrl+PageUp).
+    PageContextUp,
+    /// Down by the configured context height (Ctrl+PageDown).
+    PageContextDown,
 }
 
 /// High-level editor action bound to a hotkey.
@@ -87,6 +95,10 @@ fn map_key(key: KeyEvent) -> Event {
         KeyCode::Right => Event::Move(Direction::Right),
         KeyCode::Home => Event::Move(Direction::LineStart),
         KeyCode::End => Event::Move(Direction::LineEnd),
+        KeyCode::PageUp if ctrl => Event::Move(Direction::PageContextUp),
+        KeyCode::PageDown if ctrl => Event::Move(Direction::PageContextDown),
+        KeyCode::PageUp => Event::Move(Direction::PageUp),
+        KeyCode::PageDown => Event::Move(Direction::PageDown),
         KeyCode::Esc => Event::Escape,
         _ => Event::Unknown,
     }
@@ -236,6 +248,26 @@ mod tests {
         assert_eq!(
             map_key(press(KeyCode::End, KeyModifiers::NONE)),
             Event::Move(Direction::LineEnd)
+        );
+    }
+
+    #[test]
+    fn page_keys_map_to_page_moves() {
+        assert_eq!(
+            map_key(press(KeyCode::PageUp, KeyModifiers::NONE)),
+            Event::Move(Direction::PageUp)
+        );
+        assert_eq!(
+            map_key(press(KeyCode::PageDown, KeyModifiers::NONE)),
+            Event::Move(Direction::PageDown)
+        );
+        assert_eq!(
+            map_key(press(KeyCode::PageUp, KeyModifiers::CONTROL)),
+            Event::Move(Direction::PageContextUp)
+        );
+        assert_eq!(
+            map_key(press(KeyCode::PageDown, KeyModifiers::CONTROL)),
+            Event::Move(Direction::PageContextDown)
         );
     }
 
