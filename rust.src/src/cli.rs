@@ -13,7 +13,7 @@ use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use clap::Parser;
-use crossterm::cursor::{Hide, Show};
+use crossterm::cursor::{Hide, SetCursorStyle, Show};
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode, size,
 };
@@ -443,6 +443,7 @@ impl TerminalSession {
         enable_raw_mode()?;
         let mut out = io::stdout();
         out.execute(EnterAlternateScreen)?;
+        out.execute(SetCursorStyle::BlinkingBlock)?;
         out.execute(Hide)?;
         Ok(Self)
     }
@@ -452,6 +453,7 @@ impl Drop for TerminalSession {
     fn drop(&mut self) {
         let mut out = io::stdout();
         let _ = out.execute(Show);
+        let _ = out.execute(SetCursorStyle::DefaultUserShape);
         let _ = out.execute(LeaveAlternateScreen);
         let _ = disable_raw_mode();
     }
@@ -462,7 +464,12 @@ fn install_panic_hook() {
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let mut out = io::stdout();
-        let _ = execute!(out, Show, LeaveAlternateScreen);
+        let _ = execute!(
+            out,
+            Show,
+            SetCursorStyle::DefaultUserShape,
+            LeaveAlternateScreen
+        );
         let _ = disable_raw_mode();
         previous(info);
     }));

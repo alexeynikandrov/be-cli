@@ -34,6 +34,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed
 
+- The cursor now blinks: a blinking block style is set on startup and the
+  terminal's default cursor style is restored on exit.
+
 - Saving no longer strips the file's trailing newline; the original
   trailing-newline state is now preserved on save.
 - The status line (and transient messages such as "saved") again span the
