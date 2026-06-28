@@ -7,8 +7,17 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-28
+
 ### Added
 
+- GitHub Actions CI workflow (`.github/workflows/ci.yml`) running build, test,
+  and lint on pull requests, and a release workflow
+  (`.github/workflows/release.yml`) building cross-platform binaries on `v*`
+  tags. Both are adapted to the `rust.src/` project layout and the `be` binary.
+- Dual `MIT OR Apache-2.0` license (`LICENSE-MIT`, `LICENSE-APACHE`), declared
+  in `Cargo.toml` and documented in `README.md`. License files are bundled into
+  release archives.
 - `make release` target building an optimized binary.
 - Configurable, horizontally centered text column (`text_width`, default 80)
   with word wrap for long lines; adjustable from the settings panel and

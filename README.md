@@ -37,3 +37,12 @@ Post-MVP ideas include theme customization, custom keybindings, and full-file pr
 ## Development notes
 
 RFC lifecycle operations should be handled via `rfc-cli` (status, links, dependencies), not by manual edits to `docs/rfcs/.index.json`.
+
+## License
+
+Licensed under either of
+
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+
+at your option.
