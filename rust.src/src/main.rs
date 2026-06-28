@@ -9,7 +9,8 @@ mod viewport;
 mod renderer;
 #[allow(dead_code)]
 mod config;
+mod cli;
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> std::process::ExitCode {
+    cli::main()
 }

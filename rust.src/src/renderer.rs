@@ -32,6 +32,8 @@ pub struct Frame<'a> {
     pub cursor_line: usize,
     /// Zero-based cursor column (for the status line and screen cursor).
     pub cursor_col: usize,
+    /// Transient message shown on the status row instead of the normal status.
+    pub message: Option<&'a str>,
 }
 
 /// Truncates `s` to at most `max` characters (character-based, UTF-8 safe).
@@ -97,6 +99,21 @@ pub fn status_line(
     out
 }
 
+/// Fits a transient message to exactly `width` characters (truncate or pad).
+pub fn fit_message(width: usize, message: &str) -> String {
+    if width == 0 {
+        return String::new();
+    }
+    let len = message.chars().count();
+    if len >= width {
+        take_chars(message, width)
+    } else {
+        let mut out = message.to_string();
+        out.extend(std::iter::repeat_n(' ', width - len));
+        out
+    }
+}
+
 /// Renders frames to a writer (typically stdout) using crossterm.
 pub struct Renderer<W: Write> {
     out: W,
@@ -155,14 +172,17 @@ impl<W: Write> Renderer<W> {
             }
         }
 
-        let status = status_line(
-            frame.width as usize,
-            frame.file_name,
-            frame.modified,
-            frame.readonly,
-            frame.cursor_line,
-            frame.cursor_col,
-        );
+        let status = match frame.message {
+            Some(msg) => fit_message(frame.width as usize, msg),
+            None => status_line(
+                frame.width as usize,
+                frame.file_name,
+                frame.modified,
+                frame.readonly,
+                frame.cursor_line,
+                frame.cursor_col,
+            ),
+        };
         queue!(
             self.out,
             MoveTo(0, frame.height.saturating_sub(1)),
@@ -238,5 +258,13 @@ mod tests {
     fn take_chars_is_utf8_safe() {
         assert_eq!(take_chars("привет", 3), "при");
         assert_eq!(take_chars("ab", 5), "ab");
+    }
+
+    #[test]
+    fn fit_message_pads_and_truncates() {
+        assert_eq!(fit_message(0, "hi"), "");
+        assert_eq!(fit_message(5, "hi").chars().count(), 5);
+        assert!(fit_message(5, "hi").starts_with("hi"));
+        assert_eq!(fit_message(3, "hello"), "hel");
     }
 }
