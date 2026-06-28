@@ -174,10 +174,13 @@ impl<W: Write> Renderer<W> {
             }
         }
 
+        // The status line spans the full terminal width at the left edge, so
+        // feedback (e.g. "saved") stays where the user expects regardless of
+        // the centered text column.
         let status = match frame.message {
-            Some(msg) => fit_message(col_w as usize, msg),
+            Some(msg) => fit_message(frame.term_width as usize, msg),
             None => status_line(
-                col_w as usize,
+                frame.term_width as usize,
                 frame.file_name,
                 frame.modified,
                 frame.readonly,
@@ -189,7 +192,6 @@ impl<W: Write> Renderer<W> {
             self.out,
             MoveTo(0, frame.height.saturating_sub(1)),
             Clear(ClearType::CurrentLine),
-            MoveTo(margin, frame.height.saturating_sub(1)),
             SetForegroundColor(Color::DarkGrey),
             Print(status),
             ResetColor

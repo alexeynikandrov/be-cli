@@ -18,6 +18,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 - Saving no longer strips the file's trailing newline; the original
   trailing-newline state is now preserved on save.
+- The status line (and transient messages such as "saved") again span the
+  full terminal width at the left edge instead of shifting into the centered
+  text column, so save feedback stays visible on wide terminals.
 
 ### Changed
 
