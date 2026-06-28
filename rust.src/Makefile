@@ -1,7 +1,7 @@
 # Makefile for the Rust implementation of `be` (rust.src).
 # All build and verification is funneled through these targets.
 
-.PHONY: all build run test lint fmt fmt-check clippy check clean
+.PHONY: all build run test lint fmt fmt-check clippy check clean release
 
 # Default: full verification.
 all: check
@@ -9,6 +9,10 @@ all: check
 # Compile the project.
 build:
 	cargo build
+
+# Compile an optimized release binary.
+release:
+	cargo build --release
 
 # Run the editor. Pass arguments via ARGS, e.g. `make run ARGS="notes.txt"`.
 run:
