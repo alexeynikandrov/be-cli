@@ -19,6 +19,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   `lines_after`).
 - Ctrl+Home moves the cursor to the start of the file.
 - Ctrl+End moves the cursor to the end of the file.
+- Help is now toggled with Ctrl+H or Ctrl+?, and the status line shows a
+  `Ctrl+H Help` hint on the right when there is room. The plain `?` key now
+  inserts a literal question mark.
 
 ### Fixed
 

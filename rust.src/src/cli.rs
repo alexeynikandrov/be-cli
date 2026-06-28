@@ -262,7 +262,7 @@ impl Editor {
             "  Ctrl+S      Save".to_string(),
             "  Ctrl+Q      Quit (confirm if unsaved)".to_string(),
             "  Ctrl+O      Settings".to_string(),
-            "  ?           Toggle this help".to_string(),
+            "  Ctrl+H/?    Toggle this help".to_string(),
             "  Arrows      Move cursor".to_string(),
             "  Home/End    Start/end of line".to_string(),
             "  Ctrl+Home   Start of file".to_string(),

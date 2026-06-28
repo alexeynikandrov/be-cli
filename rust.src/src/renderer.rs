@@ -66,8 +66,19 @@ pub fn status_line(
         left.push_str(" [readonly]");
     }
     let right = format!("Ln {}, Col {}", cursor_line + 1, cursor_col + 1);
+    let hint = "Ctrl+H Help";
 
     let left_len = left.chars().count();
+
+    // Prefer showing the help hint to the left of the position when it fits;
+    // otherwise keep just the position so it stays visible on narrow lines.
+    let right_with_hint = format!("{hint}  {right}");
+    let right = if left_len + 1 + right_with_hint.chars().count() <= width {
+        right_with_hint
+    } else {
+        right
+    };
+
     let right_len = right.chars().count();
 
     // The position status is wider than the whole line: show its right side.
@@ -243,6 +254,13 @@ impl<W: Write> Renderer<W> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn status_shows_help_hint_when_wide() {
+        let s = status_line(60, "a.txt", false, false, 0, 0);
+        assert!(s.contains("Ctrl+H Help"));
+        assert!(s.ends_with("Ln 1, Col 1"));
+    }
 
     #[test]
     fn status_zero_width_is_empty() {

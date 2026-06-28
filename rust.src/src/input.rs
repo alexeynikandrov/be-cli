@@ -86,9 +86,9 @@ fn map_key(key: KeyEvent) -> Event {
             's' => Event::Action(Action::Save),
             'q' => Event::Action(Action::Quit),
             'o' => Event::Action(Action::OpenSettings),
+            'h' | '?' => Event::Action(Action::Help),
             _ => Event::Unknown,
         },
-        KeyCode::Char('?') => Event::Action(Action::Help),
         KeyCode::Char(c) => Event::Insert(c),
         KeyCode::Enter => Event::Newline,
         KeyCode::Backspace => Event::Backspace,
@@ -191,13 +191,21 @@ mod tests {
             map_key(press(KeyCode::Char('o'), KeyModifiers::CONTROL)),
             Event::Action(Action::OpenSettings)
         );
+        assert_eq!(
+            map_key(press(KeyCode::Char('h'), KeyModifiers::CONTROL)),
+            Event::Action(Action::Help)
+        );
+        assert_eq!(
+            map_key(press(KeyCode::Char('?'), KeyModifiers::CONTROL)),
+            Event::Action(Action::Help)
+        );
     }
 
     #[test]
-    fn question_mark_opens_help() {
+    fn plain_question_mark_inserts_character() {
         assert_eq!(
             map_key(press(KeyCode::Char('?'), KeyModifiers::NONE)),
-            Event::Action(Action::Help)
+            Event::Insert('?')
         );
     }
 
