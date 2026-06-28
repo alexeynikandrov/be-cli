@@ -10,6 +10,7 @@
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::time::{Duration, Instant};
 
 use clap::Parser;
 use crossterm::cursor::{Hide, Show};
@@ -68,6 +69,8 @@ pub struct Editor {
     /// Last rendered text height (console rows minus the status line); used as
     /// the PageUp/PageDown step.
     viewport_height: usize,
+    autosave: bool,
+    autosave_interval: usize,
 }
 
 impl Editor {
@@ -78,6 +81,8 @@ impl Editor {
         lines_after: usize,
         text_width: usize,
         cursor_on_open: CursorOnOpen,
+        autosave: bool,
+        autosave_interval: usize,
     ) -> Self {
         match cursor_on_open {
             CursorOnOpen::Start => doc.buffer_mut().set_cursor(0, 0),
@@ -97,6 +102,8 @@ impl Editor {
             mode: Mode::Edit,
             settings_field: 0,
             viewport_height: 1,
+            autosave,
+            autosave_interval,
         }
     }
 
@@ -122,8 +129,17 @@ impl Editor {
         }
     }
 
-    /// Handles a quit request, confirming when there are unsaved changes.
+    /// Handles a quit request.
+    ///
+    /// With autosave enabled the document is saved automatically before
+    /// quitting. Otherwise a quit with unsaved changes asks for confirmation.
     fn quit(&mut self) -> Flow {
+        if self.autosave {
+            if self.doc.buffer().is_modified() {
+                self.save();
+            }
+            return Flow::Quit;
+        }
         if self.doc.buffer().is_modified() {
             if self.pending_quit {
                 return Flow::Quit;
@@ -133,6 +149,27 @@ impl Editor {
             Flow::Continue
         } else {
             Flow::Quit
+        }
+    }
+
+    /// Returns the autosave interval as a duration, or `None` when disabled.
+    pub fn autosave_interval(&self) -> Option<Duration> {
+        if self.autosave {
+            Some(Duration::from_secs(
+                self.autosave_interval.max(1) as u64 * 60,
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// Saves the document if autosave is enabled and there are unsaved changes.
+    pub fn autosave_tick(&mut self) {
+        if self.autosave && self.doc.buffer().is_modified() {
+            match self.doc.save() {
+                Ok(()) => self.message = Some("autosaved".to_string()),
+                Err(e) => self.message = Some(e.to_string()),
+            }
         }
     }
 
@@ -213,7 +250,7 @@ impl Editor {
                 self.settings_field = self.settings_field.saturating_sub(1);
             }
             Event::Move(Direction::Down) => {
-                self.settings_field = (self.settings_field + 1).min(3);
+                self.settings_field = (self.settings_field + 1).min(5);
             }
             Event::Move(Direction::Left) => self.adjust_setting(false),
             Event::Move(Direction::Right) => self.adjust_setting(true),
@@ -245,10 +282,18 @@ impl Editor {
                     self.text_width.saturating_sub(1).max(1)
                 };
             }
-            _ => {
+            3 => {
                 self.cursor_on_open = match self.cursor_on_open {
                     CursorOnOpen::Start => CursorOnOpen::End,
                     CursorOnOpen::End => CursorOnOpen::Start,
+                };
+            }
+            4 => self.autosave = !self.autosave,
+            _ => {
+                self.autosave_interval = if up {
+                    self.autosave_interval + 1
+                } else {
+                    self.autosave_interval.saturating_sub(1).max(1)
                 };
             }
         }
@@ -291,6 +336,8 @@ impl Editor {
             format!("lines_after: {}", self.lines_after),
             format!("text_width: {}", self.text_width),
             format!("cursor_on_open: {cursor}"),
+            format!("autosave: {}", if self.autosave { "on" } else { "off" }),
+            format!("autosave_interval: {} min", self.autosave_interval),
         ];
         let mut lines = vec!["be — settings".to_string(), String::new()];
         for (i, field) in fields.iter().enumerate() {
@@ -414,6 +461,8 @@ fn run() -> io::Result<()> {
         lines_after,
         cfg.text_width,
         cfg.cursor_on_open,
+        cfg.autosave,
+        cfg.autosave_interval,
     );
     if !warnings.is_empty() {
         editor.set_message(warnings.join("; "));
@@ -423,12 +472,25 @@ fn run() -> io::Result<()> {
     let _session = TerminalSession::enter()?;
     let mut renderer = Renderer::new(io::stdout());
 
+    let mut last_tick = Instant::now();
     loop {
         let (width, height) = size()?;
         editor.render(&mut renderer, width, height)?;
-        match editor.handle(input::read_event()?) {
-            Flow::Continue => {}
-            Flow::Quit => break,
+
+        // Block on input, but wake up to autosave when the interval elapses.
+        let timeout = match editor.autosave_interval() {
+            Some(interval) => interval.saturating_sub(last_tick.elapsed()),
+            None => Duration::from_secs(3600),
+        };
+        match input::read_event_timeout(timeout)? {
+            Some(event) => match editor.handle(event) {
+                Flow::Continue => {}
+                Flow::Quit => break,
+            },
+            None => {
+                editor.autosave_tick();
+                last_tick = Instant::now();
+            }
         }
     }
 
@@ -460,7 +522,22 @@ mod tests {
         let path = std::env::temp_dir().join(format!("be_cli_{}_{}", std::process::id(), n));
         fs::write(&path, text).unwrap();
         let doc = Document::open(&path, readonly).unwrap();
-        (Editor::new(doc, 3, 3, 80, CursorOnOpen::Start), path)
+        (
+            Editor::new(doc, 3, 3, 80, CursorOnOpen::Start, false, 5),
+            path,
+        )
+    }
+
+    /// Builds an autosave-enabled editor over a fresh temp file.
+    fn autosave_editor_with(text: &str) -> (Editor, PathBuf) {
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!("be_cli_as_{}_{}", std::process::id(), n));
+        fs::write(&path, text).unwrap();
+        let doc = Document::open(&path, false).unwrap();
+        (
+            Editor::new(doc, 3, 3, 80, CursorOnOpen::Start, true, 5),
+            path,
+        )
     }
 
     #[test]
@@ -521,6 +598,38 @@ mod tests {
     }
 
     #[test]
+    fn autosave_quit_saves_and_quits_without_confirmation() {
+        let (mut ed, path) = autosave_editor_with("");
+        ed.handle(Event::Insert('x'));
+        assert_eq!(ed.handle(Event::Action(Action::Quit)), Flow::Quit);
+        assert!(!ed.doc.buffer().is_modified());
+        assert_eq!(fs::read_to_string(&path).unwrap(), "x");
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn autosave_tick_saves_modified_buffer() {
+        let (mut ed, path) = autosave_editor_with("");
+        ed.handle(Event::Insert('y'));
+        assert!(ed.doc.buffer().is_modified());
+        ed.autosave_tick();
+        assert!(!ed.doc.buffer().is_modified());
+        assert_eq!(ed.message.as_deref(), Some("autosaved"));
+        assert_eq!(fs::read_to_string(&path).unwrap(), "y");
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn autosave_disabled_has_no_interval_and_no_tick_save() {
+        let (mut ed, path) = editor_with("", false);
+        ed.handle(Event::Insert('z'));
+        assert!(ed.autosave_interval().is_none());
+        ed.autosave_tick();
+        assert!(ed.doc.buffer().is_modified()); // not saved
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
     fn movement_updates_cursor() {
         let (mut ed, path) = editor_with("ab\ncd", false);
         assert_eq!(ed.doc.buffer().cursor().line, 0);
@@ -535,7 +644,7 @@ mod tests {
         let path = std::env::temp_dir().join(format!("be_cli_end_{}_{}", std::process::id(), n));
         fs::write(&path, "ab\ncde").unwrap();
         let doc = Document::open(&path, false).unwrap();
-        let ed = Editor::new(doc, 3, 3, 80, CursorOnOpen::End);
+        let ed = Editor::new(doc, 3, 3, 80, CursorOnOpen::End, false, 5);
         let c = ed.doc.buffer().cursor();
         assert_eq!(c.line, 1);
         assert_eq!(c.col, 3);

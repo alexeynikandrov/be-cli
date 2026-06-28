@@ -7,9 +7,11 @@
 //! maps to [`Event::Unknown`] and never panics.
 
 use std::io;
+use std::time::Duration;
 
 use crossterm::event::{
-    Event as CtEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read as ct_read,
+    Event as CtEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, poll as ct_poll,
+    read as ct_read,
 };
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
@@ -122,6 +124,18 @@ fn map_event(event: CtEvent) -> Event {
 /// Blocks until the next input event and returns it normalized.
 pub fn read_event() -> io::Result<Event> {
     Ok(map_event(ct_read()?))
+}
+
+/// Waits up to `timeout` for the next input event.
+///
+/// Returns `Ok(Some(event))` when an event arrives in time, or `Ok(None)` when
+/// the timeout elapses first (used to drive periodic autosave).
+pub fn read_event_timeout(timeout: Duration) -> io::Result<Option<Event>> {
+    if ct_poll(timeout)? {
+        Ok(Some(map_event(ct_read()?)))
+    } else {
+        Ok(None)
+    }
 }
 
 /// RAII guard that keeps the terminal in raw mode while alive.

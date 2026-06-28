@@ -37,6 +37,8 @@ pub struct Config {
     pub lines_after: usize,
     pub text_width: usize,
     pub cursor_on_open: CursorOnOpen,
+    pub autosave: bool,
+    pub autosave_interval: usize,
 }
 
 impl Default for Config {
@@ -46,6 +48,8 @@ impl Default for Config {
             lines_after: 3,
             text_width: 80,
             cursor_on_open: CursorOnOpen::Start,
+            autosave: false,
+            autosave_interval: 5,
         }
     }
 }
@@ -58,11 +62,15 @@ impl Config {
              lines_before = {}\n\
              lines_after = {}\n\
              text_width = {}\n\
-             cursor_on_open = \"{}\"\n",
+             cursor_on_open = \"{}\"\n\
+             autosave = {}\n\
+             autosave_interval = {}\n",
             self.lines_before,
             self.lines_after,
             self.text_width,
             self.cursor_on_open.as_str(),
+            self.autosave,
+            self.autosave_interval,
         )
     }
 }
@@ -124,6 +132,21 @@ pub fn parse(content: &str) -> (Config, Vec<String>) {
                 _ => warnings.push(format!(
                     "invalid cursor_on_open '{value}', using {}",
                     config.cursor_on_open.as_str()
+                )),
+            },
+            "autosave" => match value.to_ascii_lowercase().as_str() {
+                "true" => config.autosave = true,
+                "false" => config.autosave = false,
+                _ => warnings.push(format!(
+                    "invalid autosave '{value}', using {}",
+                    config.autosave
+                )),
+            },
+            "autosave_interval" => match value.parse::<usize>() {
+                Ok(n) if n >= 1 => config.autosave_interval = n,
+                _ => warnings.push(format!(
+                    "invalid autosave_interval '{value}', using {}",
+                    config.autosave_interval
                 )),
             },
             _ => {}
@@ -211,6 +234,8 @@ mod tests {
         assert_eq!(c.lines_after, 3);
         assert_eq!(c.text_width, 80);
         assert_eq!(c.cursor_on_open, CursorOnOpen::Start);
+        assert!(!c.autosave);
+        assert_eq!(c.autosave_interval, 5);
     }
 
     #[test]
@@ -259,6 +284,8 @@ mod tests {
             lines_after: 1,
             text_width: 72,
             cursor_on_open: CursorOnOpen::End,
+            autosave: true,
+            autosave_interval: 10,
         };
         let (parsed, w) = parse(&original.to_toml());
         assert_eq!(parsed, original);
@@ -274,6 +301,18 @@ mod tests {
         assert_eq!(c.text_width, 80); // default kept
         assert_eq!(w.len(), 1);
         assert!(w[0].contains("text_width"));
+    }
+
+    #[test]
+    fn parse_autosave_valid_and_invalid() {
+        let (c, w) = parse("autosave = true\nautosave_interval = 10\n");
+        assert!(c.autosave);
+        assert_eq!(c.autosave_interval, 10);
+        assert!(w.is_empty());
+        let (c, w) = parse("autosave = maybe\nautosave_interval = 0\n");
+        assert!(!c.autosave); // default kept
+        assert_eq!(c.autosave_interval, 5); // default kept
+        assert_eq!(w.len(), 2);
     }
 
     #[test]
