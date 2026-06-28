@@ -18,6 +18,7 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   Ctrl+PageDown move it by the configured context height (`lines_before` /
   `lines_after`).
 - Ctrl+Home moves the cursor to the start of the file.
+- Ctrl+End moves the cursor to the end of the file.
 
 ### Fixed
 

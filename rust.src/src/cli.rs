@@ -181,6 +181,7 @@ impl Editor {
                     Direction::PageContextUp => b.move_up_by(ctx_up),
                     Direction::PageContextDown => b.move_down_by(ctx_down),
                     Direction::FileStart => b.move_file_start(),
+                    Direction::FileEnd => b.move_file_end(),
                 }
             }
             Event::Action(Action::Save) => self.save(),
@@ -265,6 +266,7 @@ impl Editor {
             "  Arrows      Move cursor".to_string(),
             "  Home/End    Start/end of line".to_string(),
             "  Ctrl+Home   Start of file".to_string(),
+            "  Ctrl+End    End of file".to_string(),
             "  PgUp/PgDn   Scroll by one page".to_string(),
             "  Ctrl+PgUp/Dn  Scroll by context height".to_string(),
             "  Enter       Insert line break".to_string(),

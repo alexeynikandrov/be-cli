@@ -34,6 +34,8 @@ pub enum Direction {
     PageContextDown,
     /// Start of the document (Ctrl+Home).
     FileStart,
+    /// End of the document (Ctrl+End).
+    FileEnd,
 }
 
 /// High-level editor action bound to a hotkey.
@@ -97,6 +99,7 @@ fn map_key(key: KeyEvent) -> Event {
         KeyCode::Right => Event::Move(Direction::Right),
         KeyCode::Home if ctrl => Event::Move(Direction::FileStart),
         KeyCode::Home => Event::Move(Direction::LineStart),
+        KeyCode::End if ctrl => Event::Move(Direction::FileEnd),
         KeyCode::End => Event::Move(Direction::LineEnd),
         KeyCode::PageUp if ctrl => Event::Move(Direction::PageContextUp),
         KeyCode::PageDown if ctrl => Event::Move(Direction::PageContextDown),
@@ -255,6 +258,10 @@ mod tests {
         assert_eq!(
             map_key(press(KeyCode::Home, KeyModifiers::CONTROL)),
             Event::Move(Direction::FileStart)
+        );
+        assert_eq!(
+            map_key(press(KeyCode::End, KeyModifiers::CONTROL)),
+            Event::Move(Direction::FileEnd)
         );
     }
 

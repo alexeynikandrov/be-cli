@@ -240,6 +240,12 @@ impl Buffer {
         self.cursor.col = 0;
     }
 
+    /// Moves the cursor to the end of the last line of the document (Ctrl+End).
+    pub fn move_file_end(&mut self) {
+        self.cursor.line = self.lines.len() - 1;
+        self.cursor.col = self.line_len(self.cursor.line);
+    }
+
     /// Moves the cursor up by `n` lines, clamping at the first line.
     pub fn move_up_by(&mut self, n: usize) {
         self.cursor.line = self.cursor.line.saturating_sub(n);
@@ -415,6 +421,14 @@ mod tests {
         b.set_cursor(2, 3);
         b.move_file_start();
         assert_eq!(b.cursor(), Cursor { line: 0, col: 0 });
+    }
+
+    #[test]
+    fn move_file_end_jumps_to_last_line_end() {
+        let mut b = Buffer::new("a\nbb\nccc");
+        b.set_cursor(0, 0);
+        b.move_file_end();
+        assert_eq!(b.cursor(), Cursor { line: 2, col: 3 });
     }
 
     #[test]
