@@ -7,6 +7,8 @@ mod input;
 mod viewport;
 #[allow(dead_code)]
 mod renderer;
+#[allow(dead_code)]
+mod config;
 
 fn main() {
     println!("Hello, world!");
