@@ -7,6 +7,14 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-29
+
+### Fixed
+
+- Active line is now drawn with the terminal's default foreground color instead
+  of a hardcoded white, so the line being edited stays readable on light
+  terminal backgrounds (e.g. the default macOS Terminal theme).
+
 ## [0.2.0] - 2026-06-28
 
 ### Added
