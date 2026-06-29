@@ -178,9 +178,8 @@ impl<W: Write> Renderer<W> {
             queue!(self.out, MoveTo(0, i as u16), Clear(ClearType::CurrentLine))?;
             match cell.kind {
                 RowKind::Active => {
-                    queue!(self.out, SetForegroundColor(Color::White))?;
-                    self.print_at(margin, i as u16, &cell.text, col_w)?;
                     queue!(self.out, ResetColor)?;
+                    self.print_at(margin, i as u16, &cell.text, col_w)?;
                 }
                 RowKind::Context => {
                     queue!(self.out, SetForegroundColor(Color::DarkGrey))?;
