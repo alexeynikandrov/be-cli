@@ -7,6 +7,8 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-30
+
 ### Changed
 
 - Flattened the `rust.src/` directory into the repository root and standardized
